@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from core.schemas import validate_request
+
 # --- Page config ---
 
 st.set_page_config(
@@ -19,10 +21,10 @@ st.set_page_config(
 # --- Session state ---
 
 _INPUT_KEYS: tuple[str, str, str] = ("client_url", "comp1_url", "comp2_url")
-_SUBMITTED_KEYS: tuple[str, str, str] = (
-    "submitted_client",
-    "submitted_comp1",
-    "submitted_comp2",
+_VALIDATED_KEYS: tuple[str, str, str] = (
+    "validated_client",
+    "validated_comp1",
+    "validated_comp2",
 )
 
 for key in _INPUT_KEYS:
@@ -60,16 +62,29 @@ with st.form("report_form"):
     submitted = st.form_submit_button("Generate Report", type="primary")
 
 if submitted:
-    st.session_state.submitted_client = st.session_state.client_url
-    st.session_state.submitted_comp1 = st.session_state.comp1_url
-    st.session_state.submitted_comp2 = st.session_state.comp2_url
+    request, errors = validate_request(
+        st.session_state.client_url,
+        st.session_state.comp1_url,
+        st.session_state.comp2_url,
+    )
+    if errors:
+        for key in _VALIDATED_KEYS:
+            st.session_state.pop(key, None)
+        st.error(
+            "Please fix the following before generating the report:\n\n"
+            + "\n".join(errors)
+        )
+    else:
+        st.session_state.validated_client = str(request.client_url)
+        st.session_state.validated_comp1 = str(request.competitor_1_url)
+        st.session_state.validated_comp2 = str(request.competitor_2_url)
 
-# --- Placeholder result (shown only after first submit) ---
+# --- Placeholder result (shown only after successful validation) ---
 
-if all(k in st.session_state for k in _SUBMITTED_KEYS):
+if all(k in st.session_state for k in _VALIDATED_KEYS):
     st.success(
         "Report generation requested for:\n\n"
-        f"- **Client:** {st.session_state.submitted_client}\n"
-        f"- **Competitor 1:** {st.session_state.submitted_comp1}\n"
-        f"- **Competitor 2:** {st.session_state.submitted_comp2}"
+        f"- **Client:** {st.session_state.validated_client}\n"
+        f"- **Competitor 1:** {st.session_state.validated_comp1}\n"
+        f"- **Competitor 2:** {st.session_state.validated_comp2}"
     )
