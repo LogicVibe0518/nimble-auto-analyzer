@@ -13,6 +13,7 @@ logs/
 Thumbs.db
 cached_analysis.json
 scraped_data.json
+sample_report.pdf
 *.egg-info/
 dist/
 build/
