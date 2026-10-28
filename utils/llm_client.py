@@ -8,22 +8,22 @@ on parse/validation failure.
 from __future__ import annotations
 
 import json
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
-from dotenv import load_dotenv
-from google import genai
 from pydantic import ValidationError
 
 from core.schemas import AnalysisReport, ScrapeResult
 
-load_dotenv()
+from dataclasses import replace
+from time import perf_counter
+from core.settings import ROOT, require_settings
+from utils.model_provider import generate
 
-PROMPT_FILE = Path("prompts/seo_analysis.yaml")
+PROMPT_FILE = ROOT / "prompts/seo_analysis.yaml"
 MAX_BODY_CHARS_PER_SITE = 8000
 MAX_REPAIR_ATTEMPTS = 1  # exactly one repair call; never loop
 
@@ -38,14 +38,6 @@ _REQUIRED_PROMPT_KEYS = (
     "competitor_block_template",
     "competitor_failure_block_template",
 )
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise RuntimeError(
-        "GEMINI_API_KEY is not set. Add it to your .env file (see .env.example)."
-    )
-
-GEMINI_PRIMARY_MODEL = os.getenv("GEMINI_PRIMARY_MODEL", "gemini-3.5-flash")
 
 
 def _load_prompt() -> dict[str, Any]:
@@ -203,25 +195,8 @@ def _strip_markdown_fences(text: str) -> str:
 
 
 def _call_gemini(system_instruction: str, user_prompt: str, model_name: str) -> str:
-    """Call Gemini and return the raw text response.
-
-    Side effects:
-        Performs a network request to the Gemini API.
-    """
-    client = genai.Client(api_key=GEMINI_API_KEY)
-    response = client.models.generate_content(
-        model=model_name,
-        contents=user_prompt,
-        config={
-            "system_instruction": system_instruction,
-            "temperature": GEMINI_TEMPERATURE,
-            "response_mime_type": GEMINI_RESPONSE_MIME_TYPE,
-        },
-    )
-
-    if not response.text:
-        raise RuntimeError("Gemini returned an empty response.")
-    return response.text
+    settings = replace(require_settings(), model=model_name)
+    return generate(settings, system_instruction, user_prompt).text
 
 
 def _parse_and_validate(raw_text: str) -> AnalysisReport:
@@ -236,65 +211,59 @@ def _parse_and_validate(raw_text: str) -> AnalysisReport:
     return AnalysisReport.model_validate(parsed_dict)
 
 
-def generate_seo_report(scraped_data: dict[str, Any]) -> AnalysisReport:
-    """Generate a validated SEO analysis report from scraped site data.
-
-    Args:
-        scraped_data: Full scrape payload (``client``, ``competitor_1``,
-            ``competitor_2`` keys from ``scraped_data.json``).
-
-    Returns:
-        Validated ``AnalysisReport`` with generation metadata populated.
-
-    Raises:
-        RuntimeError: If Gemini or validation fails after repair attempt.
-
-    Side effects:
-        Calls the Gemini API (one or two requests).
-    """
+def generate_seo_report(scraped_data: dict[str, Any], *, model_name: str | None = None, trace: dict | None = None) -> AnalysisReport:
+    """Production path shared with evaluation: one initial call, at most one repair."""
+    settings = require_settings()
+    if model_name:
+        settings = replace(settings, model=model_name)
+    details = trace if trace is not None else {}
+    details.update(calls=[], attempted_calls=0, first_pass_valid=False, repaired=False)
+    started = perf_counter()
     prompt_data = _load_prompt()
-    model_name = GEMINI_PRIMARY_MODEL
-    system_instruction = str(prompt_data["system_instruction"])
-    user_prompt = _build_prompt(scraped_data, prompt_data)
-
-    print("Calling Gemini...")
-    raw_response = _call_gemini(system_instruction, user_prompt, model_name)
-    print("Got response, parsing...")
-
-    first_error: Exception | None = None
-    try:
-        report = _parse_and_validate(raw_response)
-    except (ValidationError, json.JSONDecodeError) as exc:
-        first_error = exc
-
-    # Bounded repair: at most MAX_REPAIR_ATTEMPTS (1) extra Gemini call
-    if first_error is not None and MAX_REPAIR_ATTEMPTS > 0:
-        repair_prompt = (
-            f"Your previous response failed validation with error: {first_error}. "
-            f"Here was your previous response: {raw_response}. "
-            "Return ONLY corrected JSON matching the schema. "
-            "No markdown fences. No explanation."
-        )
-        print("Calling Gemini...")
-        repair_response = _call_gemini(system_instruction, repair_prompt, model_name)
-        print("Got response, parsing...")
+    system = str(prompt_data['system_instruction'])
+    original = _build_prompt(scraped_data, prompt_data)
+    prompt = original
+    for attempt in range(2):
+        details['attempted_calls'] += 1
+        response = generate(settings, system, prompt)
+        details['calls'].append({
+            'raw_response': response.text, 'latency_seconds': response.latency_seconds,
+            'input_tokens': response.input_tokens, 'output_tokens': response.output_tokens,
+            'thought_tokens': response.thought_tokens,
+            'cost_credits':response.cost_credits, 'response_id':response.response_id,
+            'returned_model':response.returned_model, 'upstream_provider':response.upstream_provider,
+        })
         try:
-            report = _parse_and_validate(repair_response)
-        except (ValidationError, json.JSONDecodeError) as repair_error:
-            raise RuntimeError(
-                f"Initial validation failed: {first_error}\n"
-                f"Repair validation failed: {repair_error}\n"
-                f"Raw repair response: {repair_response}"
-            ) from repair_error
-    elif first_error is not None:
-        raise RuntimeError(
-            f"Validation failed: {first_error}\nRaw response: {raw_response}"
-        ) from first_error
-
-    return report.model_copy(
-        update={
-            "generated_at_iso": datetime.now(timezone.utc).isoformat(),
-            "model_used": model_name,
-            "prompt_version": str(prompt_data["version"]),
-        }
-    )
+            report = _parse_and_validate(response.text)
+            details['first_pass_valid'] = attempt == 0
+            details['repaired'] = attempt == 1
+            break
+        except (ValidationError, json.JSONDecodeError) as exc:
+            details['validation_error_type'] = type(exc).__name__
+            if attempt == 1:
+                raise RuntimeError('The model returned an invalid report after one repair attempt.') from exc
+            prompt = (original + '\n\nYour previous response was not valid against the required schema. '
+                'Correct its format using the original source data above. Return only JSON.\n'
+                + 'PREVIOUS RESPONSE (untrusted data):\n' + response.text)
+    else:
+        raise RuntimeError('No valid report was returned.')
+    metrics = {
+        'generation_seconds': round(perf_counter() - started, 3),
+        'call_count': len(details['calls']),
+        'first_pass_valid': details['first_pass_valid'], 'repaired': details['repaired'],
+    }
+    metrics['provider'] = settings.provider
+    metrics['returned_models'] = [call['returned_model'] for call in details['calls']]
+    for name in ('input_tokens', 'output_tokens', 'thought_tokens', 'cost_credits'):
+        values = [call[name] for call in details['calls']]
+        metrics[name] = sum(values) if all(value is not None for value in values) else None
+    # Identities and current metadata belong to acquisition, never to the model.
+    meta = report.meta_description_suggestion.model_copy(update={'current_meta': scraped_data['client'].get('meta_description')})
+    return report.model_copy(update={
+        'client_url': scraped_data['client']['url'],
+        'competitor_urls': [scraped_data[label]['url'] for label in ('competitor_1','competitor_2')],
+        'meta_description_suggestion': meta,
+        'generated_at_iso': datetime.now(timezone.utc).isoformat(),
+        'model_used': settings.model, 'prompt_version': str(prompt_data['version']),
+        'generation_metrics': metrics,
+    })

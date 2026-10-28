@@ -34,7 +34,7 @@ st.title("Nimble Auto-Analyzer")
 st.caption("Internal SEO Competitor Analysis · Built for Nimble Informatics")
 st.write(
     "Paste a client URL and two competitor URLs to generate a detailed, "
-    "branded SEO analysis report in under a minute."
+    "branded SEO analysis report with source excerpts."
 )
 
 st.divider()

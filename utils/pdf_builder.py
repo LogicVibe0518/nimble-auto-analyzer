@@ -51,7 +51,7 @@ CONFIDENCE_COLORS = {
 }
 COMPANY_NAME = "Nimble Informatics"
 TOOL_NAME = "Nimble Auto-Analyzer"
-TOOL_VERSION = "v0.4"
+TOOL_VERSION = "v1.0"
 
 _MARGIN = 0.75 * inch
 _CONTENT_WIDTH = LETTER[0] - 2 * _MARGIN
@@ -433,6 +433,8 @@ def _content_strategy_page(
                 block.append(
                     Paragraph(f'"{_xml(insight.source_quote)}"', styles["Quote"])
                 )
+            if insight.source_url:
+                block.append(Paragraph(f"Source: {_xml(insight.source_url)}", styles["Caption"]))
             block.extend(
                 [
                     Paragraph(
