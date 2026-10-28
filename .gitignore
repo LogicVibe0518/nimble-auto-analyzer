@@ -17,3 +17,15 @@ sample_report.pdf
 *.egg-info/
 dist/
 build/
+
+# Generated development files
+node_modules/
+*.tsbuildinfo
+.pytest_cache/
+.env.nimble
+.nimble/
+benchmarks/results/
+
+# Local credentials and configuration variants
+.env.*
+!.env.example

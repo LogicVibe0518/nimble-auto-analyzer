@@ -101,6 +101,7 @@ class ContentStrategyInsight(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     insight: str
+    source_url: str | None = None
     source_quote: str | None
     confidence: ConfidenceLevel
     recommended_action: str
@@ -123,6 +124,8 @@ class AnalysisReport(BaseModel):
     generated_at_iso: str
     model_used: str
     prompt_version: str
+
+    generation_metrics: dict[str, Any] = Field(default_factory=dict)
 
     def total_claims(self) -> int:
         return (

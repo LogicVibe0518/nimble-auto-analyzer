@@ -1,0 +1,88 @@
+{
+  "cases": [
+    {
+      "id": "synthetic-gaps-001",
+      "sources": {
+        "client": {
+          "url": "https://www.client.example.com",
+          "success": true,
+          "status_code": 200,
+          "title": "Client",
+          "meta_description": "Marketing solutions",
+          "headings": {
+            "h1": [
+              "Marketing Solutions"
+            ]
+          },
+          "body_text": "We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams.",
+          "word_count": 175,
+          "internal_links": [],
+          "scraper_used": "offline-fixture"
+        },
+        "competitor_1": {
+          "url": "https://www.competitor-1.example.com",
+          "success": true,
+          "status_code": 200,
+          "title": "Competitor_1",
+          "meta_description": "Marketing solutions",
+          "headings": {
+            "h1": [
+              "Marketing Solutions"
+            ]
+          },
+          "body_text": "We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. Renewable energy audits and local service pricing.",
+          "word_count": 175,
+          "internal_links": [],
+          "scraper_used": "offline-fixture"
+        },
+        "competitor_2": {
+          "url": "https://www.competitor-2.example.com",
+          "success": true,
+          "status_code": 200,
+          "title": "Competitor_2",
+          "meta_description": "Marketing solutions",
+          "headings": {
+            "h1": [
+              "Marketing Solutions"
+            ]
+          },
+          "body_text": "We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams. We provide careful website analysis and market services for growing teams.",
+          "word_count": 175,
+          "internal_links": [],
+          "scraper_used": "offline-fixture"
+        }
+      },
+      "report": {
+        "client_url": "https://www.client.example.com",
+        "competitor_urls": [
+          "https://www.competitor-1.example.com",
+          "https://www.competitor-2.example.com"
+        ],
+        "executive_summary": "Illustrative fixture only. No real SEO observations are asserted.",
+        "keyword_gaps": [
+          {
+            "keyword": "renewable energy audits",
+            "which_competitor": "competitor_1",
+            "source_quote": "Renewable energy audits and local service pricing.",
+            "opportunity_rationale": "Example phrase from synthetic competitor text.",
+            "confidence": "medium"
+          }
+        ],
+        "meta_description_suggestion": {
+          "current_meta": "Marketing solutions",
+          "suggested_meta": "Improve your business visibility with trustworthy website analysis, SEO research and practical content recommendations.",
+          "character_count": 119,
+          "reasoning": "Illustrative rewrite",
+          "keywords_targeted": []
+        },
+        "content_strategy_insights": [],
+        "flagged_uncertainties": [
+          "Synthetic fixture only"
+        ],
+        "generated_at_iso": "2026-10-23T00:00:00+00:00",
+        "model_used": "offline-fixture-no-model",
+        "prompt_version": "fixture-v1"
+      }
+    }
+  ]
+}
